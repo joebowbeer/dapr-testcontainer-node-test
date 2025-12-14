@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "noEmit": true, // Prevents tsc from outputting JS files
+    "target": "esnext",
+    "module": "nodenext",
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "dapr-testcontainer-node-test",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/joebowbeer/dapr-testcontainer-node-test#readme",
+  "bugs": {
+    "url": "https://github.com/joebowbeer/dapr-testcontainer-node-test/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joebowbeer/dapr-testcontainer-node-test.git"
+  },
+  "license": "MIT",
+  "author": "joebowbeer",
+  "type": "module",
+  "scripts": {
+    "test": "node --test **/*.test.ts"
+  },
+  "devDependencies": {
+    "@dapr/dapr": "^3.6.1",
+    "@dapr/testcontainer-node": "^0.5.1",
+    "@types/body-parser": "^1.19.6",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.4",
+    "body-parser": "^2.2.1",
+    "expect": "^30.2.0",
+    "express": "^5.2.1",
+    "testcontainers": "^11.10.0",
+    "typescript": "^5.9.3"
+  }
+}
