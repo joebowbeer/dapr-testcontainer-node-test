@@ -10,7 +10,7 @@ import { DaprContainer } from "@dapr/testcontainer-node";
 import { KafkaContainer } from "@testcontainers/kafka";
 import { assertMessageProducedAndConsumed } from "./kafka-test-helper.ts";
 
-const DAPR_RUNTIME_IMAGE = "daprio/daprd:1.16.4";
+const DAPR_IMAGE = "daprio/daprd:1.16.4";
 const KAFKA_IMAGE = "confluentinc/cp-kafka:8.1.0";
 const __dirname = import.meta.dirname;
 
@@ -47,7 +47,7 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
     await TestContainers.exposeHostPorts(appPort);
 
     const network = await new Network().start();
-    const dapr = new DaprContainer(DAPR_RUNTIME_IMAGE)
+    const dapr = new DaprContainer(DAPR_IMAGE)
       .withNetwork(network)
       .withAppPort(appPort)
       .withDaprLogLevel("info")
@@ -110,7 +110,7 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
     await TestContainers.exposeHostPorts(appPort);
 
     const network = await new Network().start();
-    const dapr = new DaprContainer(DAPR_RUNTIME_IMAGE)
+    const dapr = new DaprContainer(DAPR_IMAGE)
       .withNetwork(network)
       .withAppPort(appPort)
       .withDaprLogLevel("info")
