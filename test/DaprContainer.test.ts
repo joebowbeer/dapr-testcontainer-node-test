@@ -1,5 +1,4 @@
 import path from "node:path";
-import { promisify } from "node:util";
 import { describe, it } from "node:test"
 import { expect } from "expect";
 import bodyParser from "body-parser";
@@ -43,11 +42,12 @@ describe("DaprContainer", () => {
   });
 
   it("should start and stop", { timeout: 60_000 }, async () => {
-    const network = await new Network().start();
+    await using network = await new Network().start();
     const dapr = new DaprContainer(DAPR_RUNTIME_IMAGE)
       .withNetwork(network)
       .withDaprLogLevel("debug")
       .withAppChannelAddress("host.testcontainers.internal");
+    // TODO: implement StartedDaprContainer.[Symbol.asyncDispose]
     const startedContainer = await dapr.start();
     expect(startedContainer.getHost()).toBeDefined();
     expect(startedContainer.getHttpPort()).toBeDefined();
@@ -55,17 +55,18 @@ describe("DaprContainer", () => {
     expect(startedContainer.getHttpEndpoint()).toBeDefined();
     expect(startedContainer.getGrpcEndpoint()).toBeDefined();
     await startedContainer.stop();
-    await network.stop();
   });
 
   it("should initialize DaprClient", { timeout: 60_000 }, async () => {
-    const network = await new Network().start();
+    await using network = await new Network().start();
     const dapr = new DaprContainer(DAPR_RUNTIME_IMAGE)
       .withNetwork(network)
       .withDaprLogLevel("debug")
       .withAppChannelAddress("host.testcontainers.internal");
+    // TODO: implement StartedDaprContainer.[Symbol.asyncDispose]
     const startedContainer = await dapr.start();
 
+    // TODO: implement DaprClient.[Symbol.asyncDispose]
     const client = new DaprClient({
       daprHost: startedContainer.getHost(),
       daprPort: startedContainer.getHttpPort().toString(),
@@ -75,17 +76,18 @@ describe("DaprContainer", () => {
     await client.stop();
 
     await startedContainer.stop();
-    await network.stop();
   });
 
   it("should provide kvstore in memory by default", { timeout: 60_000 }, async () => {
-    const network = await new Network().start();
+    await using network = await new Network().start();
     const dapr = new DaprContainer(DAPR_RUNTIME_IMAGE)
       .withNetwork(network)
       .withDaprLogLevel("debug")
       .withAppChannelAddress("host.testcontainers.internal");
+    // TODO: implement StartedDaprContainer.[Symbol.asyncDispose]
     const startedContainer = await dapr.start();
 
+    // TODO: implement DaprClient.[Symbol.asyncDispose]
     const client = new DaprClient({
       daprHost: startedContainer.getHost(),
       daprPort: startedContainer.getHttpPort().toString(),
@@ -101,7 +103,6 @@ describe("DaprContainer", () => {
     await client.stop();
 
     await startedContainer.stop();
-    await network.stop();
   });
 
   it("should provide pubsub in memory by default", { timeout: 60_000 }, async () => {
@@ -122,20 +123,22 @@ describe("DaprContainer", () => {
     });
 
     const appPort = 8081;
-    const server = app.listen(appPort, () => {
+    await using _ = app.listen(appPort, () => {
       console.log(`Server is listening on port ${appPort}`);
     });
     await TestContainers.exposeHostPorts(appPort);
 
-    const network = await new Network().start();
+    await using network = await new Network().start();
     const dapr = new DaprContainer(DAPR_RUNTIME_IMAGE)
       .withNetwork(network)
       .withAppPort(appPort)
       .withDaprLogLevel("info")
       .withDaprApiLoggingEnabled(false)
       .withAppChannelAddress("host.testcontainers.internal");
+    // TODO: implement StartedDaprContainer.[Symbol.asyncDispose]
     const startedContainer = await dapr.start();
 
+    // TODO: implement DaprClient.[Symbol.asyncDispose]
     const client = new DaprClient({
       daprHost: startedContainer.getHost(),
       daprPort: startedContainer.getHttpPort().toString(),
@@ -151,8 +154,6 @@ describe("DaprContainer", () => {
 
     await client.stop();
     await startedContainer.stop();
-    await network.stop();
-    await promisify(server.close.bind(server))();
   });
 
   it("should route messages programmatically", { timeout: 60_000 }, async () => {
@@ -185,20 +186,22 @@ describe("DaprContainer", () => {
     });
 
     const appPort = 8082;
-    const server = app.listen(appPort, () => {
+    await using _ = app.listen(appPort, () => {
       console.log(`Server is listening on port ${appPort}`);
     });
     await TestContainers.exposeHostPorts(appPort);
 
-    const network = await new Network().start();
+    await using network = await new Network().start();
     const dapr = new DaprContainer(DAPR_RUNTIME_IMAGE)
       .withNetwork(network)
       .withAppPort(appPort)
       .withDaprLogLevel("info")
       .withDaprApiLoggingEnabled(false)
       .withAppChannelAddress("host.testcontainers.internal");
+    // TODO: implement StartedDaprContainer.[Symbol.asyncDispose]
     const startedContainer = await dapr.start();
 
+    // TODO: implement DaprClient.[Symbol.asyncDispose]
     const client = new DaprClient({
       daprHost: startedContainer.getHost(),
       daprPort: startedContainer.getHttpPort().toString(),
@@ -214,7 +217,5 @@ describe("DaprContainer", () => {
 
     await client.stop();
     await startedContainer.stop();
-    await network.stop();
-    await promisify(server.close.bind(server))();
   });
 });

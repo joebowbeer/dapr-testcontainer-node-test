@@ -6,9 +6,9 @@ spec:
   type: pubsub.kafka
   version: v1
   metadata:
-  - name: brokers # Required. Kafka broker connection setting
-    value: "dapr-kafka.myapp.svc.cluster.local:9092"
-  - name: authType # Required.
+  - name: brokers
+    value: kafka:9092
+  - name: authType
     value: "none"
   - name: disableTls
     value: "true"

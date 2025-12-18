@@ -1,14 +1,12 @@
 import path from "node:path";
 import { describe, it } from "node:test"
-import { promisify } from "node:util";
 import { expect } from "expect";
 import bodyParser from "body-parser";
 import express from "express";
 import { Network, TestContainers } from "testcontainers";
 import { DaprClient, LogLevel } from "@dapr/dapr";
-import { DaprContainer } from "@dapr/testcontainer-node";
+import { DaprContainer, Subscription } from "@dapr/testcontainer-node";
 import { KafkaContainer } from "@testcontainers/kafka";
-import { assertMessageProducedAndConsumed } from "./kafka-test-helper.ts";
 
 const DAPR_IMAGE = "daprio/daprd:1.16.4";
 const KAFKA_IMAGE = "confluentinc/cp-kafka:8.1.0";
@@ -16,14 +14,7 @@ const __dirname = import.meta.dirname;
 
 describe("DaprWithKafka", { timeout: 240_000 }, () => {
 
-  it("should connect with custom network", async () => {
-    await using network = await new Network().start();
-    await using container = await new KafkaContainer(KAFKA_IMAGE).withNetwork(network).start();
-
-    await assertMessageProducedAndConsumed(container);
-  });
-
-  it("should provide pubsub via Kafka", { timeout: 60_000 }, async () => {
+  it("should do Kafka pubsub", { timeout: 60_000 }, async () => {
     const app = express();
     app.use(bodyParser.json({ type: "application/*+json" }));
 
@@ -41,20 +32,46 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
     });
 
     const appPort = 8081;
-    const server = app.listen(appPort, () => {
+    await using _server = app.listen(appPort, () => {
       console.log(`Server is listening on port ${appPort}`);
     });
     await TestContainers.exposeHostPorts(appPort);
 
-    const network = await new Network().start();
+    await using network = await new Network().start();
+
+    await using _kafka = await new KafkaContainer(KAFKA_IMAGE)
+      .withNetwork(network)
+      .withNetworkAliases("kafka")
+      .start();
+
+    const componentPath = path.join(__dirname, "__fixtures__", "dapr-resources", "pubsub.yaml");
+
     const dapr = new DaprContainer(DAPR_IMAGE)
       .withNetwork(network)
       .withAppPort(appPort)
       .withDaprLogLevel("info")
-      .withDaprApiLoggingEnabled(false)
+      .withDaprApiLoggingEnabled(true)
+      .withComponentFromPath(componentPath)
+      .withSubscription(new Subscription("my-subscription", "kafka-pubsub-noauth", "topic", undefined, "/events"))
       .withAppChannelAddress("host.testcontainers.internal");
+
+    const components = dapr.getComponents();
+    expect(components.length).toBe(1);
+    const pubsub = components[0];
+    // console.log(pubsub.toYaml());
+    expect(pubsub.name).toBe("kafka-pubsub-noauth");
+
+    const subscriptions = dapr.getSubscriptions();
+    expect(subscriptions.length).toBe(1);
+    const subscription = subscriptions[0];
+    // console.log(subscription.toYaml());
+    expect(subscription.pubsubName).toBe("kafka-pubsub-noauth");
+    expect(subscription.topic).toBe("topic");
+
+    // TODO: implement StartedDaprContainer.[Symbol.asyncDispose]
     const startedContainer = await dapr.start();
 
+    // TODO: implement DaprClient.[Symbol.asyncDispose]
     const client = new DaprClient({
       daprHost: startedContainer.getHost(),
       daprPort: startedContainer.getHttpPort().toString(),
@@ -62,7 +79,7 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
     });
 
     console.log("Publishing message...");
-    await client.pubsub.publish("pubsub", "topic", { key: "key", value: "value" });
+    await client.pubsub.publish("kafka-pubsub-noauth", "topic", { key: "key", value: "value" });
 
     console.log("Waiting for data...");
     const data = await promise;
@@ -70,11 +87,9 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
 
     await client.stop();
     await startedContainer.stop();
-    await network.stop();
-    await promisify(server.close.bind(server))();
   });
 
-  it("should route messages programmatically", { timeout: 60_000 }, async () => {
+  it("should route Kafka messages programmatically", { timeout: 60_000 }, async () => {
     const app = express();
     app.use(bodyParser.json({ type: "application/*+json" }));
 
@@ -87,7 +102,7 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
     app.get("/dapr/subscribe", (req, res) => {
       res.json([
         {
-          pubsubname: "pubsub",
+          pubsubname: "kafka-pubsub-noauth",
           topic: "orders",
           routes: {
             default: "/orders",
@@ -104,20 +119,38 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
     });
 
     const appPort = 8082;
-    const server = app.listen(appPort, () => {
+    await using _server = app.listen(appPort, () => {
       console.log(`Server is listening on port ${appPort}`);
     });
     await TestContainers.exposeHostPorts(appPort);
 
-    const network = await new Network().start();
+    await using network = await new Network().start();
+
+    await using _kafka = await new KafkaContainer(KAFKA_IMAGE)
+      .withNetwork(network)
+      .withNetworkAliases("kafka")
+      .start();
+
+    const componentPath = path.join(__dirname, "__fixtures__", "dapr-resources", "pubsub.yaml");
+
     const dapr = new DaprContainer(DAPR_IMAGE)
       .withNetwork(network)
       .withAppPort(appPort)
       .withDaprLogLevel("info")
-      .withDaprApiLoggingEnabled(false)
+      .withDaprApiLoggingEnabled(true)
+      .withComponentFromPath(componentPath)
       .withAppChannelAddress("host.testcontainers.internal");
+
+    const components = dapr.getComponents();
+    expect(components.length).toBe(1);
+    const pubsub = components[0];
+    // console.log(pubsub.toYaml());
+    expect(pubsub.name).toBe("kafka-pubsub-noauth");
+
+    // TODO: implement StartedDaprContainer.[Symbol.asyncDispose]
     const startedContainer = await dapr.start();
 
+    // TODO: implement DaprClient.[Symbol.asyncDispose]
     const client = new DaprClient({
       daprHost: startedContainer.getHost(),
       daprPort: startedContainer.getHttpPort().toString(),
@@ -125,7 +158,7 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
     });
 
     console.log("Publishing message...");
-    await client.pubsub.publish("pubsub", "orders", { key: "key", value: "value" });
+    await client.pubsub.publish("kafka-pubsub-noauth", "orders", { key: "key", value: "value" });
 
     console.log("Waiting for data...");
     const data = await promise;
@@ -133,7 +166,5 @@ describe("DaprWithKafka", { timeout: 240_000 }, () => {
 
     await client.stop();
     await startedContainer.stop();
-    await network.stop();
-    await promisify(server.close.bind(server))();
   });
 });
